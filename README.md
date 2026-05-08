@@ -165,9 +165,6 @@ Contributions are welcome! Feel free to:
 - Improve visualizations or documentation
 - Extend the analysis to other locations
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 👤 Author
 
@@ -195,9 +192,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Update CSS selectors in the code to match new HTML structure
 - Check the browser's Inspector tool to find the correct selectors
 
-## 📞 Support
-
-For questions or issues, please open a GitHub issue or contact the author.
 
 ---
 
