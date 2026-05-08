@@ -1,0 +1,50 @@
+# R-specific files
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+.Rproj.user/
+
+# Output files
+*.html
+*.pdf
+*.docx
+
+# Cache directories
+.cache/
+cache/
+__pycache__/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Generated files
+output/
+results/
+*.log
+*.out
+
+# Dependencies (optional - uncomment if using renv)
+# renv/
+
+# Temporary files
+*.tmp
+*.temp
+.RHistory
+
+# Large data files (optional)
+# data/raw/
+
+# Environment variables
+.env
+.env.local
+
+# OS-specific
+Thumbs.db
+.AppleDouble
+.LSOverride

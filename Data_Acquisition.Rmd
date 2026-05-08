@@ -1,0 +1,300 @@
+---
+title: "Data Acquisition and Survey Methods"
+subtitle: |
+  Individual Assignment
+
+  Web scraping & basic data analysis
+author: "Despoina Kotsidou"
+output: pdf_document
+date: "2026-03-27"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Forecast for the next 48 hours
+
+For this assignment, I selected Dublin as the target location and extracted the data from the "Forecast for the next 48 hours" table as my name is "Despoina". The scraped information was then structured into a clean table format, excluding weather symbols and preserving all relevant data fields.
+
+```{r, include=FALSE}
+library(rvest)
+library(dplyr)
+library(httr)
+```
+
+## The original table from the site
+
+![Forecast for the next 48 hours](Desktop/Screenshot%202026-03-27%20at%2017.29.25.png){width="456"}
+
+```{r}
+
+```
+
+## Export data and Clean the Table
+
+In this step, I cleaned and restructured the scraped weather table for Dublin by combining day and period information into meaningful column headers. Additionally, I removed unnecessary rows to create a clear dataset suitable for further analysis.
+
+```{r}
+url <- "https://www.timeanddate.com/weather/ireland/dublin"
+
+page <- GET(url, add_headers("Accept-Language" = "en-US"))
+
+
+html <- read_html(httr::GET(url, httr::add_headers("Accept-Language" = "en")))
+
+
+weather_table <- html %>%
+  html_element("#wt-48") %>%
+  html_table()
+new_headers <- paste(colnames(weather_table), weather_table[1, ])
+new_headers[1] <- "Category"
+colnames(weather_table) <- new_headers # Apply the new combined names to the table
+
+# Move the weather descriptions (Row 4) into the Forecast row (Row 2)
+weather_table[2, 2:ncol(weather_table)] <- weather_table[4, 2:ncol(weather_table)]
+weather_table[2, 1] <- "Forecast"
+
+weather_table <- weather_table[-c(1, 4), ] # Remove rows 1 and 4
+weather_table <- head(weather_table, -1)  # Remove the footer
+```
+
+## View the Forecast for the next 48 hours table
+
+```{r, include=FALSE}
+
+library(knitr)
+library(kableExtra)
+```
+
+```{r}
+kbl(weather_table,
+    booktabs = TRUE,
+    caption = "Detailed Weather Forecast Analysis",
+    align = "lccccccc") %>%
+  kable_styling(
+    latex_options = c("striped", "scale_down", "hold_position"),
+    full_width = FALSE
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#4472c4") %>%
+  column_spec(1, bold = TRUE, border_right = TRUE)
+```
+
+# Detailed Hourly Forecast
+
+For this task, I extracted data from the "Detailed Hourly Forecast Next 24 hours" for Dublin and visualised the predicted trends of temperature, wind, and humidity, with properly formatted date and time values.
+
+```{r}
+
+
+url <- "https://www.timeanddate.com/weather/ireland/dublin/hourly"
+
+# Fetch data
+html <- read_html(httr::GET(url, httr::add_headers("Accept-Language" = "en")))
+
+# cleaning
+hourly_table <- html %>%
+  html_table() %>%
+  .[[1]]
+
+# Handle Headers
+colnames(hourly_table) <- hourly_table[1, ]
+hourly_table <- hourly_table[-c(1, 2), ] # Remove the header and "Comfort" row
+hourly_table <- head(hourly_table, -1)   # Remove the footer
+
+# Remove the 2nd column,keep only the specific columns we want
+hourly_table <- hourly_table %>%
+  select(Time, Temp, Wind, Humidity)
+
+# Final filter to remove empty time rows
+hourly_table <- hourly_table[hourly_table$Time != "", ]
+```
+
+## View the Hourly Forecast table
+
+```{r}
+# We use 'scale_down' here because you want it to fit the page width perfectly
+kbl(hourly_table,
+    booktabs = TRUE,
+    caption = "Hourly Forecast (Dublin)",
+    align = "lccc") %>%
+  kable_styling(
+    latex_options = c("striped", "scale_down", "hold_position"),
+    full_width = FALSE,
+    font_size = 8 # Smaller font helps fit more rows on one page
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#4472c4") %>%
+  column_spec(1, bold = TRUE, border_right = TRUE)
+```
+
+## Hourly Weather Forecast Plot
+
+In the following, we can see the plots created for Dublin, displayed one below the other, illustrating the hourly development of humidity, temperature, and wind over the next 24 hours.
+
+```{r, include=FALSE}
+
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+
+```
+
+```{r,}
+# Clean data and shorten Time labels
+plot_data <- hourly_table %>%
+  mutate(
+    # Keep only the first two digits of the Time
+    Time_Short = stringr::str_extract(Time, "^\\d{2}"),
+
+    # Convert weather strings to pure numbers
+    Temp = as.numeric(gsub("[^0-9\\-]", "", Temp)),
+    Wind = as.numeric(gsub("[^0-9]", "", Wind)),
+    Humidity = as.numeric(gsub("[^0-9]", "", Humidity)),
+
+    # Keep the original order of the website
+    Order = row_number()
+  ) %>%
+  pivot_longer(cols = c(Temp, Wind, Humidity),
+               names_to = "Condition",
+               values_to = "Value")
+
+# Create the plot
+ggplot(plot_data, aes(x = reorder(Time_Short, Order), y = Value, fill = Condition)) +
+  geom_area(aes(group = Condition), alpha = 0.7) +
+  geom_line(aes(group = Condition), color = "black", linewidth = 0.5) +
+  facet_wrap(~Condition, ncol = 1, scales = "free_y") +
+  # Custom colors: Red for Temp, Blue for Humidity, Grey for Wind
+  scale_fill_manual(values = c("Temp" = "purple",
+                               "Humidity" = "#377eb8",
+                               "Wind" = "#008080")) +
+  theme_minimal() +
+  labs(
+    title = "Hourly Weather Forecast: Dublin",
+    x = "Hour of Day",
+    y = NULL
+  ) +
+  theme(
+    strip.text = element_text(face = "bold", size = 12),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+
+```
+
+# Annual Weather Averages
+
+For this task, I retrieved the monthly annual weather averages from the "Climate (Averages) - Annual Weather Averages" table for Dublin by extracting the data directly from the climate table object and structuring it into a clean format. Use the html_node in order to take all the tables from the div.
+
+```{r, include=FALSE}
+library(rvest)
+library(dplyr)
+library(tidyr)
+library(kableExtra)
+library(stringr)
+```
+
+```{r}
+url <- "https://www.timeanddate.com/weather/ireland/dublin/climate"
+
+html <- GET(url, add_headers("Accept-Language" = "en")) %>%
+  read_html()
+
+
+
+climate <- html %>% html_node("#climateTable")
+
+months <- climate %>% html_nodes(".climate-month")
+
+#months[[1]]
+
+data_list <- lapply(months, function(m) {
+
+  title <- m %>% html_node("h3") %>% html_text(trim = TRUE)
+
+  values <- m %>% html_nodes("p") %>% html_text(trim = TRUE)
+
+  # Extract numbers
+  max_temp <- str_extract(values[1], "\\d+")
+  min_temp  <- str_extract(values[2], "\\d+")
+  mean_temp <- str_extract(values[3], "\\d+")
+  precip    <- str_extract(values[4], "\\d+\\.?\\d*")
+
+  data.frame(
+    Month = title,
+    Maximum = as.numeric(max_temp),
+    Minimum = as.numeric(min_temp),
+    Mean = as.numeric(mean_temp),
+    Precipitation = as.numeric(precip)
+  )
+})
+
+climate_df <- do.call(rbind, data_list)
+# Remove the repetitive suffix from the Month column
+climate_df$Month <- str_remove(climate_df$Month, " Climate & Weather Averages in Dublin")
+```
+
+## View Annual Weather Averages table
+
+```{r}
+kbl(climate_df,
+    booktabs = TRUE,
+    caption = "Dublin Monthly Climate Averages",
+    align = "lcccc") %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    full_width = FALSE,
+    font_size = 10
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#4472c4") %>%
+  column_spec(1, bold = TRUE, border_right = TRUE)
+
+```
+
+## Monthly Climate Overview Plot
+
+In the following, we can see the plot created for Dublin, where the shaded area represents monthly precipitation levels, while the line and error bars illustrate the average temperature and its minimum–maximum range throughout the year.
+
+```{r}
+
+# Clean data: Remove "All Year"
+plot_df <- climate_df[climate_df$Month != "All Year", ]
+plot_df$Month <- factor(plot_df$Month, levels = month.name)
+
+#  Create the plot
+ggplot(plot_df, aes(x = Month)) +
+  # Use group = 1 to ensure the area connects across the x-axis factors
+  geom_area(aes(y = Precipitation, fill = "Precipitation (mm)", group = 1),
+            alpha = 0.4) +
+
+  # ERROR BARS
+  geom_errorbar(aes(ymin = Minimum * 4, ymax = Maximum * 4, color =
+                      "Temp Range (Min/Max)"),
+                width = 0.3, size = 0.8) +
+
+  # Mean Temperature
+  geom_line(aes(y = Mean * 4, color = "Mean Temperature (°C)", group = 1), size = 1.2) +
+  geom_point(aes(y = Mean * 4, color = "Mean Temperature (°C)"), size = 3) +
+
+  # Set the two Y-axes scales
+  scale_y_continuous(
+    name = "Precipitation (mm)",
+    limits = c(0, 100), # Adjusted to fit the scaled Max temp (20*4 = 80)
+    sec.axis = sec_axis(~./4, name = "Temperature (°C)")
+  ) +
+
+  # Define colors
+  scale_fill_manual(name = "", values = c("Precipitation (mm)" = "purple")) +
+  scale_color_manual(name = "",
+                     values = c("Mean Temperature (°C)" = "red",
+                                "Temp Range (Min/Max)" = "darkred")) +
+
+  # Final styling
+  theme_minimal() +
+  labs(title = "Dublin Monthly Climate Overview",
+       subtitle = "Area represents Precipitation and  Error bars show Temp Range",
+       x = "Month") +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
