@@ -5,7 +5,7 @@ subtitle: |
 
   Web scraping & basic data analysis
 author: "Despoina Kotsidou"
-output: pdf_document
+output: html_document
 date: "2026-03-27"
 ---
 
